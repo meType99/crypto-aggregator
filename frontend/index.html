@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinRate — Агрегатор курсов валют и криптовалют</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Боковая панель -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">₿</span>
+                    <span class="logo-text">FinRate</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="home">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-label">Главная</span>
+                </a>
+                <a href="#" class="nav-item" data-section="currencies">
+                    <span class="nav-icon">💵</span>
+                    <span class="nav-label">Валюты</span>
+                </a>
+                <a href="#" class="nav-item" data-section="crypto">
+                    <span class="nav-icon">🪙</span>
+                    <span class="nav-label">Криптовалюты</span>
+                </a>
+                <a href="#" class="nav-item" data-section="charts">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-label">Графики</span>
+                </a>
+                <a href="#" class="nav-item" data-section="favorites">
+                    <span class="nav-icon">⭐</span>
+                    <span class="nav-label">Избранное</span>
+                </a>
+                <a href="#" class="nav-item" data-section="notifications">
+                    <span class="nav-icon">🔔</span>
+                    <span class="nav-label">Уведомления</span>
+                </a>
+                <a href="#" class="nav-item" data-section="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Настройки</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Подключение...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <header class="top-bar">
+                <button class="menu-toggle" id="menuToggle" aria-label="Меню">☰</button>
+                <div class="search-container">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Поиск валют и криптовалют..." autocomplete="off">
+                    <div class="search-results" id="searchResults"></div>
+                </div>
+                <div class="top-bar-actions">
+                    <span class="live-badge" id="liveBadge">
+                        <span class="live-dot"></span> LIVE
+                    </span>
+                    <button class="btn-refresh" id="refreshBtn" title="Обновить данные">↻</button>
+                    <span class="last-update" id="lastUpdate">—</span>
+                    <span class="countdown" id="countdown">—</span>
+                </div>
+            </header>
+
+            <!-- Секция: Главная -->
+            <section class="page-section active" id="section-home">
+                <div class="page-header">
+                    <h1>Обзор рынка</h1>
+                    <p class="subtitle">Актуальные курсы валют и криптовалют в реальном времени</p>
+                </div>
+
+                <div class="cards-grid" id="popularCurrencies">
+                    <h2 class="section-title">Популярные валюты</h2>
+                    <div class="cards-row" id="currencyCards"></div>
+                </div>
+
+                <div class="cards-grid" id="popularCrypto">
+                    <h2 class="section-title">Популярные криптовалюты</h2>
+                    <div class="cards-row" id="cryptoCards"></div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="panel panel-table">
+                        <div class="panel-header">
+                            <h2>Таблица курсов</h2>
+                            <div class="table-tabs">
+                                <button class="tab-btn active" data-table="all">Все</button>
+                                <button class="tab-btn" data-table="currencies">Валюты</button>
+                                <button class="tab-btn" data-table="crypto">Крипто</button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="rates-table" id="ratesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Актив</th>
+                                        <th>Название</th>
+                                        <th>USD</th>
+                                        <th>RUB</th>
+                                        <th>7 дней</th>
+                                        <th>Обновлено</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ratesTableBody">
+                                    <tr><td colspan="6" class="loading-cell">Загрузка данных...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="panel panel-chart">
+                        <div class="panel-header">
+                            <h2>BTC / RUB</h2>
+                            <span class="change-badge" id="btcRubChange">—</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="btcRubChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel panel-updates">
+                    <div class="panel-header">
+                        <h2>Последние обновления</h2>
+                    </div>
+                    <ul class="updates-list" id="updatesList">
+                        <li class="loading-item">Загрузка...</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Секция: Валюты -->
+            <section class="page-section" id="section-currencies">
+                <div class="page-header">
+                    <h1>Фиатные валюты</h1>
+                    <p class="subtitle">Курсы мировых валют в USD и RUB</p>
+                </div>
+                <div class="panel">
+                    <div class="table-wrapper">
+                        <table class="rates-table">
+                            <thead>
+                                <tr>
+                                    <th>Код</th>
+                                    <th>Название</th>
+                                    <th>USD</th>
+                                    <th>RUB</th>
+                                    <th>7 дней</th>
+                                    <th>Обновлено</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="allCurrenciesBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Секция: Криптовалюты -->
+            <section class="page-section" id="section-crypto">
+                <div class="page-header">
+                    <h1>Криптовалюты</h1>
+                    <p class="subtitle">Цены криптовалют в USD и RUB</p>
+                </div>
+                <div class="panel">
+                    <div class="table-wrapper">
+                        <table class="rates-table">
+                            <thead>
+                                <tr>
+                                    <th>Символ</th>
+                                    <th>Название</th>
+                                    <th>USD</th>
+                                    <th>RUB</th>
+                                    <th>7 дней</th>
+                                    <th>Обновлено</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="allCryptoBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Секция: Графики -->
+            <section class="page-section" id="section-charts">
+                <div class="page-header">
+                    <h1>Графики</h1>
+                    <p class="subtitle">Динамика изменения курсов</p>
+                </div>
+                <div class="chart-controls">
+                    <select id="chartAssetType" class="select-input">
+                        <option value="crypto">Криптовалюта</option>
+                        <option value="currency">Валюта</option>
+                    </select>
+                    <select id="chartSymbol" class="select-input"></select>
+                    <select id="chartDays" class="select-input">
+                        <option value="1">1 день</option>
+                        <option value="7" selected>7 дней</option>
+                        <option value="30">30 дней</option>
+                        <option value="90">90 дней</option>
+                    </select>
+                    <button class="btn-primary" id="loadChartBtn">Построить</button>
+                </div>
+                <div class="panel panel-chart-large">
+                    <div class="panel-header">
+                        <h2 id="chartTitle">Выберите актив</h2>
+                        <span class="change-badge" id="chartChange">—</span>
+                    </div>
+                    <div class="chart-container chart-container-lg">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Секция: Избранное -->
+            <section class="page-section" id="section-favorites">
+                <div class="page-header">
+                    <h1>Избранное</h1>
+                    <p class="subtitle">Ваши отслеживаемые активы</p>
+                </div>
+                <div class="cards-row" id="favoritesCards">
+                    <p class="empty-message">Добавьте активы в избранное, нажав ★ в таблице</p>
+                </div>
+            </section>
+
+            <!-- Секция: Уведомления -->
+            <section class="page-section" id="section-notifications">
+                <div class="page-header">
+                    <h1>Уведомления</h1>
+                    <p class="subtitle">Системные сообщения и обновления</p>
+                </div>
+                <ul class="notifications-list" id="notificationsList">
+                    <li class="notification-item info">
+                        <span class="notification-time">Сейчас</span>
+                        <span class="notification-text">Добро пожаловать в FinRate! Данные обновляются автоматически каждые 5 минут.</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Секция: Настройки -->
+            <section class="page-section" id="section-settings">
+                <div class="page-header">
+                    <h1>Настройки</h1>
+                    <p class="subtitle">Параметры отображения</p>
+                </div>
+                <div class="panel settings-panel">
+                    <div class="setting-item">
+                        <label for="autoRefresh">Автообновление интерфейса</label>
+                        <input type="checkbox" id="autoRefresh" checked>
+                    </div>
+                    <div class="setting-item">
+                        <label for="refreshInterval">Интервал обновления (сек)</label>
+                        <input type="number" id="refreshInterval" class="select-input" value="300" min="60" max="600" step="60">
+                    </div>
+                    <div class="setting-item">
+                        <label for="defaultChartDays">Период графика по умолчанию</label>
+                        <select id="defaultChartDays" class="select-input">
+                            <option value="7" selected>7 дней</option>
+                            <option value="30">30 дней</option>
+                            <option value="90">90 дней</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" id="saveSettingsBtn">Сохранить</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
