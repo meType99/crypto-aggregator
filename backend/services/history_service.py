@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 
 from backend.database.connection import db
 from backend.models.price_history import PriceHistory
+from backend.services.external_history_service import ExternalHistoryService
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,26 @@ class HistoryService:
             .order_by(PriceHistory.recorded_at.asc())
             .all()
         )
+
+        # Fallback: загрузка из внешних API если в БД мало данных
+        if len(records) < 2:
+            if asset_type == 'crypto':
+                ext_history = ExternalHistoryService.get_crypto_history(symbol, days)
+            else:
+                ext_history = ExternalHistoryService.get_currency_history(symbol, days)
+
+            if ext_history:
+                change_percent = ExternalHistoryService.calculate_change(ext_history)
+                return {
+                    'symbol': symbol,
+                    'asset_type': asset_type,
+                    'days': days,
+                    'history': ext_history,
+                    'change_percent': change_percent,
+                    'current_price': ext_history[-1]['price'],
+                    'first_price': ext_history[0]['price'],
+                    'source': 'external',
+                }
 
         if not records:
             return {
@@ -180,7 +201,8 @@ class HistoryService:
             else:
                 changes[symbol] = round(((last_val - first_val) / first_val) * 100, 2)
 
-        return changes
+        # Дополняем из внешних API (CoinGecko / Frankfurter) для свежих деплоев
+        return ExternalHistoryService.merge_weekly_changes(changes, symbols, asset_type)
 
     @staticmethod
     def get_recent_updates(limit: int = 10) -> List[Dict]:
@@ -222,16 +244,49 @@ class HistoryService:
     def get_btc_rub_history(days: int = 7) -> Dict:
         """
         Получить историю BTC/RUB для главной страницы.
-
-        Конвертирует BTC/USD и USD/RUB в BTC/RUB.
-
-        Returns:
-            Данные для графика BTC/RUB.
         """
+        days = max(1, min(days, 90))
+
+        # Сначала пробуем локальную БД
         btc_history = HistoryService.get_history('BTC', 'crypto', days)
         rub_currency = HistoryService.get_history('RUB', 'currency', days)
 
-        if not btc_history.get('history') or not rub_currency.get('history'):
+        combined_history = []
+        change_percent = 0.0
+
+        if (
+            btc_history.get('history')
+            and rub_currency.get('history')
+            and btc_history.get('source') != 'external'
+        ):
+            rub_map = {}
+            for record in rub_currency['history']:
+                timestamp = record['recorded_at'][:16]
+                rub_map[timestamp] = record['price']
+
+            for btc_record in btc_history['history']:
+                timestamp = btc_record['recorded_at'][:16]
+                rub_rate = rub_map.get(timestamp)
+                if rub_rate:
+                    combined_history.append({
+                        'recorded_at': btc_record['recorded_at'],
+                        'price': round(btc_record['price'] * rub_rate, 2),
+                    })
+
+            if len(combined_history) >= 2:
+                first = combined_history[0]['price']
+                last = combined_history[-1]['price']
+                if first > 0:
+                    change_percent = round(((last - first) / first) * 100, 2)
+
+        # Fallback: CoinGecko BTC/RUB напрямую (если мало совпадений в локальной БД)
+        if len(combined_history) < 10:
+            ext_history = ExternalHistoryService.get_btc_rub_history(days)
+            if ext_history:
+                combined_history = ext_history
+                change_percent = ExternalHistoryService.calculate_change(ext_history)
+
+        if not combined_history:
             return {
                 'pair': 'BTC/RUB',
                 'days': days,
@@ -241,35 +296,10 @@ class HistoryService:
                 'message': 'Недостаточно данных для построения графика BTC/RUB',
             }
 
-        # Строим карту RUB-курсов по времени (USD -> RUB rate)
-        rub_map = {}
-        for record in rub_currency['history']:
-            timestamp = record['recorded_at'][:16]  # до минут
-            rub_map[timestamp] = record['price']
-
-        combined_history = []
-        for btc_record in btc_history['history']:
-            timestamp = btc_record['recorded_at'][:16]
-            rub_rate = rub_map.get(timestamp)
-
-            if rub_rate:
-                btc_rub_price = btc_record['price'] * rub_rate
-                combined_history.append({
-                    'recorded_at': btc_record['recorded_at'],
-                    'price': round(btc_rub_price, 2),
-                })
-
-        change_percent = 0.0
-        if len(combined_history) >= 2:
-            first = combined_history[0]['price']
-            last = combined_history[-1]['price']
-            if first > 0:
-                change_percent = round(((last - first) / first) * 100, 2)
-
         return {
             'pair': 'BTC/RUB',
             'days': days,
             'history': combined_history,
             'change_percent': change_percent,
-            'current_price': combined_history[-1]['price'] if combined_history else None,
+            'current_price': combined_history[-1]['price'],
         }

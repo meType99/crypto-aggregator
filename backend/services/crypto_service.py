@@ -12,27 +12,13 @@ from backend.database.connection import db
 from backend.models.cryptocurrency import Cryptocurrency
 from backend.models.price_history import PriceHistory
 from backend.services.api_client import ApiClient
+from backend.services.constants import TRACKED_CRYPTO
+from backend.services.rate_enrichment_service import RateEnrichmentService
 
 logger = logging.getLogger(__name__)
 
 # Список отслеживаемых криптовалют: id CoinGecko -> (symbol, name)
-TRACKED_CRYPTO: Dict[str, tuple] = {
-    'bitcoin': ('BTC', 'Bitcoin'),
-    'ethereum': ('ETH', 'Ethereum'),
-    'tether': ('USDT', 'Tether'),
-    'binancecoin': ('BNB', 'Binance Coin'),
-    'solana': ('SOL', 'Solana'),
-    'ripple': ('XRP', 'Ripple'),
-    'cardano': ('ADA', 'Cardano'),
-    'dogecoin': ('DOGE', 'Dogecoin'),
-    'tron': ('TRX', 'TRON'),
-    'polkadot': ('DOT', 'Polkadot'),
-    'litecoin': ('LTC', 'Litecoin'),
-    'chainlink': ('LINK', 'Chainlink'),
-}
-
-
-from backend.services.rate_enrichment_service import RateEnrichmentService
+# (константа также доступна через constants.TRACKED_CRYPTO)
 
 
 class CryptoService:

@@ -101,7 +101,16 @@ const UI = {
         const sign = value > 0 ? '+' : '';
         const cssClass = value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral';
         const arrow = value > 0 ? '▲' : value < 0 ? '▼' : '—';
-        return `<span class="change-badge ${cssClass}">${arrow} ${sign}${value}%</span>`;
+        const barWidth = Math.min(Math.abs(value) * 3, 100);
+
+        return `
+            <div class="change-cell">
+                <span class="change-badge ${cssClass}">${arrow} ${sign}${value}%</span>
+                <div class="change-bar-track">
+                    <div class="change-bar-fill ${cssClass}" style="width: ${barWidth}%"></div>
+                </div>
+            </div>
+        `;
     },
 
     formatDateTime(isoDate) {
@@ -122,6 +131,7 @@ const UI = {
         const change = item.change_percent_7d ?? 0;
         const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : '';
         const changeSign = change > 0 ? '+' : '';
+        const barWidth = Math.min(Math.abs(change) * 3, 100);
 
         return `
             <div class="rate-card" data-symbol="${symbol}" data-type="${type}">
@@ -136,6 +146,9 @@ const UI = {
                 <div class="rate-card-name">${item.name}</div>
                 <div class="rate-card-change ${changeClass}">
                     ${changeSign}${change}% за 7 дней
+                </div>
+                <div class="change-bar-track card-bar">
+                    <div class="change-bar-fill ${changeClass}" style="width: ${barWidth}%"></div>
                 </div>
             </div>
         `;
@@ -157,26 +170,24 @@ const UI = {
         const tbody = document.getElementById('ratesTableBody');
         if (!tbody) return;
 
-        const rows = [];
+        let rows = [];
 
         if (filter === 'all' || filter === 'currencies') {
-            currencies.forEach(item => {
-                rows.push(this.createTableRow(item, 'currency'));
-            });
+            currencies.forEach(item => rows.push(this.createTableRow(item, 'currency')));
+        }
+        if (filter === 'all' || filter === 'crypto') {
+            cryptos.forEach(item => rows.push(this.createTableRow(item, 'crypto')));
         }
 
-        if (filter === 'all' || filter === 'crypto') {
-            cryptos.forEach(item => {
-                rows.push(this.createTableRow(item, 'crypto'));
-            });
-        }
+        // Сортировка: сначала лидеры роста, потом падения
+        rows.sort((a, b) => (b._change ?? 0) - (a._change ?? 0));
 
         if (rows.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">Нет данных для отображения</td></tr>';
             return;
         }
 
-        tbody.innerHTML = rows.join('');
+        tbody.innerHTML = rows.map(r => r.html).join('');
     },
 
     createTableRow(item, type) {
@@ -185,7 +196,9 @@ const UI = {
         const rub = type === 'currency' ? item.rate_rub : item.price_rub;
         const change = item.change_percent_7d ?? 0;
 
-        return `
+        return {
+            _change: change,
+            html: `
             <tr data-symbol="${symbol}" data-type="${type}">
                 <td><span class="asset-badge">${symbol.substring(0, 3)}</span></td>
                 <td>${item.name}</td>
@@ -194,7 +207,8 @@ const UI = {
                 <td>${this.formatChangeBadge(change)}</td>
                 <td>${this.formatDateTime(item.updated_at)}</td>
             </tr>
-        `;
+        `,
+        };
     },
 
     renderAllCurrencies(currencies) {

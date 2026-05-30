@@ -44,8 +44,8 @@ const App = {
             UI.setLastUpdate(meta.server_time);
             UI.resetCountdown(this.refreshInterval);
 
-            UI.renderCards('currencyCards', popularCurr.data, 'currency');
-            UI.renderCards('cryptoCards', popularCrypto.data, 'crypto');
+            UI.renderCards('currencyCards', this._sortByChange(popularCurr.data), 'currency');
+            UI.renderCards('cryptoCards', this._sortByChange(popularCrypto.data), 'crypto');
 
             const activeTab = document.querySelector('.tab-btn.active')?.dataset.table || 'all';
             UI.renderRatesTable(this.currencies, this.cryptos, activeTab);
@@ -56,6 +56,11 @@ const App = {
                     btcRubRes.data.history,
                     btcRubRes.data.change_percent
                 );
+            }
+
+            // Обновить график на странице «Графики» если открыта
+            if (document.getElementById('section-charts')?.classList.contains('active')) {
+                await this.loadChart(true);
             }
 
             UI.renderAllCurrencies(this.currencies);
@@ -86,7 +91,11 @@ const App = {
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
-                UI.showSection(item.dataset.section);
+                const section = item.dataset.section;
+                UI.showSection(section);
+                if (section === 'charts') {
+                    this.loadChart(true);
+                }
             });
         });
 
@@ -166,13 +175,13 @@ const App = {
         });
     },
 
-    async loadChart() {
+    async loadChart(silent = false) {
         const symbol = document.getElementById('chartSymbol')?.value;
         const assetType = document.getElementById('chartAssetType')?.value || 'crypto';
         const days = parseInt(document.getElementById('chartDays')?.value || '7', 10);
 
         if (!symbol) {
-            UI.showToast('Выберите актив для графика', 'error');
+            if (!silent) UI.showToast('Выберите актив для графика', 'error');
             return;
         }
 
@@ -181,14 +190,24 @@ const App = {
             const data = result.data;
 
             if (!data.history || data.history.length === 0) {
-                UI.showToast('Нет исторических данных для этого актива', 'info');
+                if (!silent) UI.showToast('Нет исторических данных для этого актива', 'info');
                 return;
             }
 
-            ChartManager.renderMainChart(`${symbol}/USD (${days}д)`, data.history, data.change_percent);
+            ChartManager.renderMainChart(
+                `${symbol}/USD (${days}д)`,
+                data.history,
+                data.change_percent
+            );
         } catch (error) {
-            UI.showToast(`Ошибка загрузки графика: ${error.message}`, 'error');
+            if (!silent) UI.showToast(`Ошибка загрузки графика: ${error.message}`, 'error');
         }
+    },
+
+    _sortByChange(items) {
+        return [...items].sort(
+            (a, b) => (b.change_percent_7d ?? 0) - (a.change_percent_7d ?? 0)
+        );
     },
 
     startAutoRefresh() {
